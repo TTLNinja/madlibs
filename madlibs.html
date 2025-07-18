@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS Mad Libs - by B'ad Samurai</title>
+    <link rel="icon" type="image/svg+xml" href="https://ttl.ninja/ninja.svg">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Architects+Daughter&display=swap');
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+            min-height: 100vh;
+            color: #222;
+        }
+        
+        /* Spiral binding effect */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px 20px 20px 80px;
+            position: relative;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            min-height: 100vh;
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            left: 40px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #ddd;
+            box-shadow: 
+                -20px 0 0 0 #fff,
+                -19px 0 0 0 #ddd,
+                -18px 0 0 0 #fff,
+                -17px 0 0 0 #ddd;
+        }
+        
+        /* Spiral holes */
+        .container::after {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 30px;
+            bottom: 30px;
+            width: 20px;
+            background-image: repeating-linear-gradient(
+                to bottom,
+                transparent,
+                transparent 20px,
+                #666 20px,
+                #666 22px,
+                transparent 22px,
+                transparent 30px,
+                #666 30px,
+                #666 32px,
+                transparent 32px,
+                transparent 40px
+            );
+        }
+        
+        /* Notebook lines */
+        .notebook-lines {
+            position: absolute;
+            top: 0;
+            left: 80px;
+            right: 0;
+            bottom: 0;
+            background-image: repeating-linear-gradient(
+                to bottom,
+                transparent,
+                transparent 29px,
+                #e0e0e0 29px,
+                #e0e0e0 30px
+            );
+            pointer-events: none;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            position: relative;
+            z-index: 10;
+            transform: rotate(-1deg);
+        }
+        
+        h1 {
+            color: #222;
+            font-size: 2.5em;
+            margin: 0;
+            font-family: 'Architects Daughter', cursive;
+            text-decoration: underline;
+            text-decoration-style: wavy;
+            text-underline-offset: 5px;
+        }
+        
+        .tagline {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 10px;
+            font-family: 'Kalam', cursive;
+            font-style: italic;
+        }
+        
+        .world-selector {
+            background: #f9f9f9;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 2px dashed #999;
+            position: relative;
+            z-index: 10;
+            transform: rotate(0.5deg);
+        }
+        
+        .world-selector h3 {
+            color: #222;
+            margin-top: 0;
+            font-family: 'Architects Daughter', cursive;
+        }
+        
+        select, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #666;
+            background-color: white;
+            color: #222;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            font-family: 'Kalam', cursive;
+            font-weight: 400;
+        }
+        
+        select option {
+            background-color: white;
+        }
+        
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #222;
+            color: white;
+            border: 2px solid #222;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+            font-family: 'Architects Daughter', cursive;
+            transition: all 0.2s;
+            transform: rotate(-1deg);
+        }
+        
+        button:hover {
+            transform: rotate(1deg) scale(1.05);
+            background: white;
+            color: #222;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            border-color: #ccc;
+            cursor: not-allowed;
+            transform: rotate(0deg);
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            font-size: 20px;
+            margin: 20px 0;
+            font-family: 'Kalam', cursive;
+        }
+        
+        .error {
+            color: #d00;
+            margin: 10px 0;
+            padding: 15px;
+            background-color: #fee;
+            border: 2px solid #d00;
+            font-family: 'Kalam', cursive;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 5px;
+            margin: 20px 0;
+            font-size: 12px;
+        }
+        
+        .status-item {
+            background-color: white;
+            padding: 5px 8px;
+            font-size: 11px;
+            border: 1px solid #ccc;
+            font-family: 'Kalam', cursive;
+        }
+        
+        .status-item.loaded {
+            border-color: #090;
+            color: #090;
+        }
+        
+        .status-item.error {
+            border-color: #d00;
+            color: #d00;
+        }
+        
+        .game-area {
+            display: none;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .story-section {
+            margin-bottom: 25px;
+            padding: 15px 0;
+            position: relative;
+        }
+        
+        .section-title {
+            color: #222;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+            font-family: 'Architects Daughter', cursive;
+            text-decoration: underline;
+            text-decoration-style: double;
+            transform: rotate(-1deg);
+            display: inline-block;
+        }
+        
+        .story-line {
+            line-height: 1.8;
+            font-size: 22px;
+            margin-bottom: 12px;
+            font-family: 'Kalam', cursive;
+            color: #333;
+        }
+        
+        .word-slot {
+            display: inline-block;
+            position: relative;
+            margin: 0 2px;
+            border: none;
+        }
+        
+        .word-input {
+            border: none;
+            background: transparent;
+            color: #666;
+            font-family: 'Kalam', cursive;
+            font-size: 22px;
+            font-weight: 700;
+            padding: 0 2px;
+            margin: 0;
+            cursor: pointer;
+            text-align: center;
+            min-width: 60px;
+            max-width: 150px;
+            transition: all 0.2s;
+            display: inline-block;
+            width: auto;
+        }
+        
+        .word-input:hover {
+            border: none;
+            background: transparent;
+        }
+        
+        .word-input:focus {
+            outline: none;
+            border: none;
+            background: transparent;
+        }
+        
+        .word-input.filled {
+            color: #222;
+            font-weight: 700;
+            border: none;
+        }
+        
+        .word-input::placeholder {
+            color: #666;
+            font-style: italic;
+        }
+        
+        .word-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border: 2px solid #222;
+            padding: 2px;
+            z-index: 1000;
+            display: none;
+            max-height: 120px;
+            overflow-y: auto;
+            min-width: 100px;
+            box-shadow: 3px 3px 0px #222;
+        }
+        
+        .word-dropdown.show {
+            display: block;
+        }
+        
+        .word-option {
+            padding: 2px 8px;
+            cursor: pointer;
+            color: #222;
+            font-size: 14px;
+            font-family: 'Kalam', cursive;
+            transition: all 0.1s;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .word-option:last-child {
+            border-bottom: none;
+        }
+        
+        .word-option:hover {
+            background: #222;
+            color: white;
+            padding-left: 12px;
+        }
+        
+        .word-type-hint {
+            position: absolute;
+            top: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: #666;
+            font-family: 'Architects Daughter', cursive;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        
+        .word-slot:hover .word-type-hint {
+            opacity: 1;
+        }
+        
+        .completed-story {
+            background: #f9f9f9;
+            padding: 25px;
+            margin-top: 30px;
+            display: none;
+            border: 3px double #222;
+            position: relative;
+            transform: rotate(0.5deg);
+        }
+        
+        .completed-story h2 {
+            color: #222;
+            margin-top: 0;
+            font-family: 'Architects Daughter', cursive;
+            text-decoration: underline;
+            text-decoration-style: wavy;
+        }
+        
+        .completed-section {
+            margin-bottom: 20px;
+        }
+        
+        .completed-section h3 {
+            color: #222;
+            text-transform: uppercase;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            font-family: 'Architects Daughter', cursive;
+        }
+        
+        .completed-section p {
+            font-family: 'Kalam', cursive;
+            font-size: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .filled-word {
+            color: #000;
+            font-weight: 700;
+            text-decoration: underline;
+            text-decoration-style: wavy;
+        }
+        
+        .manual-input {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border: 1px dashed #999;
+        }
+        
+        .manual-input h4 {
+            color: #222;
+            margin-top: 0;
+            font-family: 'Architects Daughter', cursive;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+        }
+        
+        /* Scrollbar styling */
+        .word-dropdown::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .word-dropdown::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        .word-dropdown::-webkit-scrollbar-thumb {
+            background: #888;
+            border: 1px solid #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <img src="https://ttl.ninja/ninja.svg" alt="⌛" style="width: 1em; height: 1em; vertical-align: middle;">
+                DNS Mad Libs
+                <img src="https://ttl.ninja/ninja.svg" alt="⌛" style="width: 1em; height: 1em; vertical-align: middle;">
+            </h1>
+            <div class="tagline" id="tagline">by <a href="http://infosec.exchange/@badsamurai" style="color: #222; text-decoration: underline;">B'ad Samurai</a></div>
+        </div>
+        
+        <div class="world-selector">
+            <h3>Select Your World</h3>
+            <input type="text" id="rootDomain" placeholder="Root domain (e.g., madlibs.ttl.ninja)" value="madlibs.ttl.ninja" />
+            <button onclick="loadWorlds()">Load Available Worlds</button>
+            
+            <div id="worldSelect" style="margin-top: 15px; display: none;">
+                <select id="worldDropdown" onchange="selectWorld()">
+                    <option value="">Choose a world...</option>
+                </select>
+            </div>
+            
+            <div class="manual-input">
+                <h4>Or enter domain manually:</h4>
+                <input type="text" id="manualDomain" placeholder="e.g., wu-tang.madlibs.ttl.ninja" />
+                <button onclick="loadManualWorld()">Load Manual World</button>
+            </div>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <div>Loading DNS records...</div>
+            <div style="font-size: 16px; margin-top: 10px;">This may take a moment...</div>
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div class="status-grid" id="statusGrid"></div>
+        
+        <div class="game-area" id="gameArea">
+            <h2 style="color: #ffc800; text-align: center; font-family: 'Bebas Neue', cursive; letter-spacing: 3px;">Fill in the Story</h2>
+            <div id="storyContainer"></div>
+            
+            <div class="controls">
+                <button onclick="generateStory()">Generate Complete Story!</button>
+                <button onclick="randomizeAll()">Randomize All Words</button>
+                <button onclick="resetStory()">New Story Mix</button>
+                <button onclick="clearAll()">Clear All</button>
+            </div>
+            
+            <div class="completed-story" id="completedStory"></div>
+        </div>
+        <div class="tagline" id="tagline" style="text-align: center;">
+            <a href="https://github.com/TTLNinja/dns-madlibs">DNS Madlibs</a> • A <a href="https://ttl.ninja">TTL.ninja</a> project • by <a href="https://infosec.exchange/@badsamurai" target="_blank" rel="noopener">B'ad Samurai</a>
+        </div>
+    </div>
+
+    <script>
+        let worldData = null;
+        let wordLists = {};
+        let storyStructure = [];
+        let storyParts = {};
+        let currentWorld = '';
+        
+        async function fetchDNSRecords(domain) {
+            try {
+                const response = await fetch(
+                    `https://cloudflare-dns.com/dns-query?name=${domain}&type=TXT`,
+                    {
+                        headers: {
+                            'Accept': 'application/dns-json'
+                        }
+                    }
+                );
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.Answer) {
+                    // Concatenate all TXT record values
+                    const allRecords = data.Answer
+                        .filter(record => record.type === 16)
+                        .map(record => record.data.replace(/^"|"$/g, ''))
+                        .join('');
+                    return allRecords;
+                }
+                
+                return '';
+            } catch (error) {
+                console.error(`Error fetching ${domain}:`, error);
+                throw error;
+            }
+        }
+        
+        async function loadWorlds() {
+            const rootDomain = document.getElementById('rootDomain').value.trim();
+            if (!rootDomain) {
+                showError('Please enter a root domain');
+                return;
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+            
+            try {
+                const worldsData = await fetchDNSRecords(rootDomain);
+                if (!worldsData) {
+                    throw new Error('No worlds found in DNS records');
+                }
+                
+                // Parse world data - expecting format: "domain|name|tagline"
+                const worlds = worldsData.split('\n').filter(w => w.trim());
+                const dropdown = document.getElementById('worldDropdown');
+                dropdown.innerHTML = '<option value="">Choose a world...</option>';
+                
+                worlds.forEach(world => {
+                    const [domain, name, tagline] = world.split('|').map(s => s.trim());
+                    const option = document.createElement('option');
+                    option.value = domain;
+                    option.textContent = name + (tagline ? ` - ${tagline}` : '');
+                    option.dataset.name = name || '';
+                    option.dataset.tagline = tagline || '';
+                    dropdown.appendChild(option);
+                });
+                
+                document.getElementById('worldSelect').style.display = 'block';
+                document.getElementById('loading').style.display = 'none';
+            } catch (error) {
+                showError(`Failed to load worlds: ${error.message}`);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        function selectWorld() {
+            const dropdown = document.getElementById('worldDropdown');
+            const selected = dropdown.selectedOptions[0];
+            if (selected.value) {
+                currentWorld = selected.value;
+                const name = selected.dataset.name;
+                const tagline = selected.dataset.tagline;
+                
+                // Update header with world info
+                const h1 = document.querySelector('h1');
+                h1.innerHTML = `${name} Mad Lib`;
+                document.getElementById('tagline').textContent = tagline;
+                
+                loadWorld(currentWorld);
+            }
+        }
+        
+        function loadManualWorld() {
+            const domain = document.getElementById('manualDomain').value.trim();
+            if (!domain) {
+                showError('Please enter a domain');
+                return;
+            }
+            currentWorld = domain;
+            loadWorld(domain);
+        }
+        
+        async function loadWorld(worldDomain) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('gameArea').style.display = 'none';
+            document.getElementById('statusGrid').innerHTML = '';
+            
+            // Reset data
+            wordLists = {};
+            storyStructure = [];
+            storyParts = {};
+            
+            try {
+                // Get the world data to find structure
+                updateStatus('world', 'Loading world data...');
+                const worldData = await fetchDNSRecords(worldDomain);
+                
+                if (!worldData) {
+                    throw new Error('No world data found');
+                }
+                
+                // Parse world data - expecting "structure|part1(n),part2(n),..."
+                const parts = worldData.split('|').map(s => s.trim());
+                
+                // Find the structure part
+                let structureIndex = parts.findIndex(p => p.toLowerCase() === 'structure');
+                if (structureIndex === -1) {
+                    // Maybe the structure is in the first part if it starts with "structure|"
+                    if (worldData.toLowerCase().startsWith('structure|')) {
+                        const structureMatch = worldData.match(/structure\|([^|]+)/i);
+                        if (structureMatch) {
+                            const structureDefinition = structureMatch[1];
+                            
+                            // Parse story parts from structure definition
+                            const structureParts = structureDefinition.split(',');
+                            console.log('Structure parts:', structureParts);
+                            
+                            storyStructure = structureParts.map(part => {
+                                const trimmedPart = part.trim();
+                                const match = trimmedPart.match(/(\w+)(?:\((\d+)\))?/);
+                                console.log(`Parsing: "${trimmedPart}", match:`, match);
+                                if (match) {
+                                    const result = {
+                                        name: match[1],
+                                        count: parseInt(match[2] || '1')
+                                    };
+                                    console.log(`Parsed structure part: ${result.name} with count ${result.count}`);
+                                    return result;
+                                }
+                                return null;
+                            }).filter(Boolean);
+                            
+                            updateStatus('structure', `Loaded: ${storyStructure.length} parts`, true);
+                        } else {
+                            throw new Error('Could not parse structure definition');
+                        }
+                    } else {
+                        throw new Error('No structure definition found in world data');
+                    }
+                } else {
+                    // The structure definition should be right after "structure"
+                    if (structureIndex + 1 >= parts.length) {
+                        throw new Error('Structure definition missing after "structure" keyword');
+                    }
+                    const structureDefinition = parts[structureIndex + 1];
+                    
+                    // Parse story parts from structure definition
+                    const structureParts = structureDefinition.split(',');
+                    storyStructure = structureParts.map(part => {
+                        const match = part.trim().match(/(\w+)(?:\((\d+)\))?/);
+                        if (match) {
+                            return {
+                                name: match[1],
+                                count: parseInt(match[2] || '1')
+                            };
+                        }
+                        return null;
+                    }).filter(Boolean);
+                    
+                    updateStatus('structure', `Loaded: ${storyStructure.length} parts`, true);
+                }
+                
+                updateStatus('world', 'World data loaded', true);
+                
+                // Load word lists
+                const wordTypes = ['adjectives', 'nouns', 'verbs', 'places', 'expletives'];
+                for (const type of wordTypes) {
+                    updateStatus(type, 'Loading...');
+                    try {
+                        const data = await fetchDNSRecords(`${type}.${worldDomain}`);
+                        if (data) {
+                            wordLists[type] = data.split('|').filter(w => w.trim()).map(w => w.trim());
+                            updateStatus(type, `Loaded: ${wordLists[type].length} words`, true);
+                        } else {
+                            updateStatus(type, 'No data found', false);
+                        }
+                    } catch (error) {
+                        updateStatus(type, 'Failed to load', false);
+                    }
+                }
+                
+                // Load story parts
+                for (const part of storyStructure) {
+                    updateStatus(part.name, 'Loading...');
+                    try {
+                        const data = await fetchDNSRecords(`${part.name}.${worldDomain}`);
+                        if (data) {
+                            console.log(`Raw ${part.name} data (first 200 chars):`, data.substring(0, 200));
+                            
+                            // Try splitting by newlines first, then by pipes as fallback
+                            let lines = data.split('\n').filter(s => s.trim()).map(s => s.trim());
+                            
+                            // If newline split didn't work (only 1 line), try pipe separation
+                            if (lines.length === 1 && data.includes('|')) {
+                                lines = data.split('|').filter(s => s.trim()).map(s => s.trim());
+                                console.log(`${part.name}: used pipe separator, got ${lines.length} lines`);
+                            } else {
+                                console.log(`${part.name}: used newline separator, got ${lines.length} lines`);
+                            }
+                            
+                            // Remove any quotes from the beginning and end of each line
+                            lines = lines.map(line => {
+                                if (line.startsWith('"') && line.endsWith('"')) {
+                                    return line.slice(1, -1);
+                                }
+                                return line;
+                            });
+                            
+                            console.log(`First line example:`, lines[0]);
+                            
+                            storyParts[part.name] = lines;
+                            updateStatus(part.name, `Loaded: ${storyParts[part.name].length} templates`, true);
+                            console.log(`${part.name}: loaded ${storyParts[part.name].length} lines, structure says select ${part.count}`);
+                        } else {
+                            updateStatus(part.name, 'No data found', false);
+                        }
+                    } catch (error) {
+                        updateStatus(part.name, 'Failed to load', false);
+                    }
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('gameArea').style.display = 'block';
+                
+                resetStory();
+                
+            } catch (error) {
+                showError(`Failed to load world: ${error.message}`);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        function updateStatus(item, message, success = null) {
+            const grid = document.getElementById('statusGrid');
+            let statusDiv = document.getElementById(`status-${item}`);
+            
+            if (!statusDiv) {
+                statusDiv = document.createElement('div');
+                statusDiv.id = `status-${item}`;
+                statusDiv.className = 'status-item';
+                grid.appendChild(statusDiv);
+            }
+            
+            statusDiv.textContent = `${item}: ${message}`;
+            statusDiv.className = 'status-item';
+            
+            if (success === true) {
+                statusDiv.classList.add('loaded');
+            } else if (success === false) {
+                statusDiv.classList.add('error');
+            }
+        }
+        
+        function resetStory() {
+            const container = document.getElementById('storyContainer');
+            container.innerHTML = '';
+            document.getElementById('completedStory').style.display = 'none';
+            
+            console.log('=== STARTING STORY RESET ===');
+            console.log('Story structure:', JSON.stringify(storyStructure, null, 2));
+            
+            // Generate story based on structure (order preserved from DNS record)
+            storyStructure.forEach((part, partIndex) => {
+                console.log(`\n--- Processing part ${partIndex + 1}: ${part.name} ---`);
+                console.log(`Should select: ${part.count} lines`);
+                
+                if (!storyParts[part.name] || storyParts[part.name].length === 0) {
+                    console.log('No lines available for this part');
+                    return;
+                }
+                
+                console.log(`Available lines: ${storyParts[part.name].length}`);
+                
+                const section = document.createElement('div');
+                section.className = 'story-section';
+                
+                const title = document.createElement('div');
+                title.className = 'section-title';
+                title.textContent = part.name.toUpperCase();
+                section.appendChild(title);
+                
+                // Select random lines based on count from structure
+                const availableLines = [...storyParts[part.name]];
+                const selectedLines = [];
+                const numberToSelect = Math.min(part.count, availableLines.length);
+                
+                console.log(`Will select: ${numberToSelect} lines`);
+                
+                for (let i = 0; i < numberToSelect; i++) {
+                    const randomIndex = Math.floor(Math.random() * availableLines.length);
+                    const selectedLine = availableLines[randomIndex];
+                    selectedLines.push(selectedLine);
+                    availableLines.splice(randomIndex, 1);
+                    console.log(`Selected line ${i + 1}: "${selectedLine.substring(0, 60)}..."`);
+                }
+                
+                console.log(`Total selected: ${selectedLines.length} lines`);
+                
+                // Render selected lines
+                selectedLines.forEach((line, lineIndex) => {
+                    const lineDiv = document.createElement('div');
+                    lineDiv.className = 'story-line';
+                    lineDiv.innerHTML = renderTemplate(line);
+                    section.appendChild(lineDiv);
+                    console.log(`Rendered line ${lineIndex + 1}`);
+                });
+                
+                container.appendChild(section);
+                
+                // Verify what was actually added
+                const addedLines = section.querySelectorAll('.story-line').length;
+                console.log(`✓ Section complete: ${addedLines} lines added to DOM`);
+                
+                if (addedLines !== numberToSelect) {
+                    console.error(`ERROR: Expected ${numberToSelect} lines but got ${addedLines}!`);
+                }
+            });
+            
+            // Final verification
+            const allSections = container.querySelectorAll('.story-section');
+            console.log(`\n=== STORY RESET COMPLETE ===`);
+            console.log(`Total sections: ${allSections.length}`);
+            allSections.forEach((section, index) => {
+                const sectionName = section.querySelector('.section-title').textContent;
+                const lineCount = section.querySelectorAll('.story-line').length;
+                console.log(`${sectionName}: ${lineCount} lines`);
+            });
+            
+            // Add click handlers after rendering
+            setTimeout(() => {
+                document.querySelectorAll('.word-input').forEach(input => {
+                    input.addEventListener('click', showDropdown);
+                });
+            }, 100);
+        }
+        
+        function renderTemplate(template) {
+            return template.replace(/{(\w+)}/g, (match, wordType) => {
+                // Handle both singular and plural forms
+                let lookupType = wordType;
+                if (wordType === 'expletive') {
+                    lookupType = 'expletives';
+                } else if (!wordType.endsWith('s')) {
+                    lookupType = wordType + 's';
+                }
+                
+                const words = wordLists[lookupType] || [];
+                if (words.length === 0) {
+                    console.warn(`No words found for type: ${lookupType}`);
+                    return match;
+                }
+                
+                const inputId = `input_${Math.random().toString(36).substr(2, 9)}`;
+                
+                return `<span class="word-slot">
+                    <span class="word-type-hint">${wordType.toUpperCase()}</span>
+                    <input type="text" 
+                           id="${inputId}" 
+                           class="word-input" 
+                           data-type="${lookupType}"
+                           placeholder="${wordType}"
+                           readonly>
+                    <div class="word-dropdown" id="dropdown_${inputId}">
+                        ${words.map(word => 
+                            `<div class="word-option" onclick="selectWord('${inputId}', '${word}')">${word}</div>`
+                        ).join('')}
+                    </div>
+                </span>`;
+            });
+        }
+        
+        function showDropdown(event) {
+            const input = event.target;
+            const dropdownId = `dropdown_${input.id}`;
+            const dropdown = document.getElementById(dropdownId);
+            
+            // Close all other dropdowns
+            document.querySelectorAll('.word-dropdown').forEach(d => {
+                if (d.id !== dropdownId) {
+                    d.classList.remove('show');
+                }
+            });
+            
+            // Toggle this dropdown
+            dropdown.classList.toggle('show');
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function closeDropdown(e) {
+                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('show');
+                    document.removeEventListener('click', closeDropdown);
+                }
+            });
+        }
+        
+        function selectWord(inputId, word) {
+            const input = document.getElementById(inputId);
+            input.value = word;
+            input.classList.add('filled');
+            
+            // Also mark the parent word-slot as filled
+            const wordSlot = input.closest('.word-slot');
+            if (wordSlot) {
+                wordSlot.classList.add('filled');
+            }
+            
+            document.getElementById(`dropdown_${inputId}`).classList.remove('show');
+        }
+        
+        function generateStory() {
+            const inputs = document.querySelectorAll('.word-input');
+            let allFilled = true;
+            
+            inputs.forEach(input => {
+                if (!input.value) {
+                    allFilled = false;
+                    input.style.borderBottomColor = '#ff4444';
+                } else {
+                    input.style.borderBottomColor = '#ffd700';
+                }
+            });
+            
+            if (!allFilled) {
+                alert('Please fill in all the blanks!');
+                return;
+            }
+            
+            // Generate the complete story
+            const completedDiv = document.getElementById('completedStory');
+            completedDiv.innerHTML = '<h2>Your Wu-Tang Mad Lib Masterpiece:</h2>';
+            
+            const sections = document.querySelectorAll('.story-section');
+            sections.forEach(section => {
+                const completedSection = document.createElement('div');
+                completedSection.className = 'completed-section';
+                
+                const title = section.querySelector('.section-title').textContent;
+                completedSection.innerHTML = `<h3>${title}</h3>`;
+                
+                const lines = section.querySelectorAll('.story-line');
+                lines.forEach(line => {
+                    const lineText = line.textContent;
+                    const inputs = line.querySelectorAll('.word-input');
+                    let finalText = line.innerHTML;
+                    
+                    inputs.forEach(input => {
+                        const span = `<span class="filled-word">${input.value}</span>`;
+                        finalText = finalText.replace(input.outerHTML, span);
+                    });
+                    
+                    // Clean up the HTML
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = finalText;
+                    tempDiv.querySelectorAll('.word-dropdown, .word-type-hint').forEach(el => el.remove());
+                    
+                    completedSection.innerHTML += `<p>${tempDiv.innerHTML}</p>`;
+                });
+                
+                completedDiv.appendChild(completedSection);
+            });
+            
+            completedDiv.style.display = 'block';
+            completedDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function randomizeAll() {
+            document.querySelectorAll('.word-input').forEach(input => {
+                const type = input.dataset.type;
+                const words = wordLists[type] || [];
+                if (words.length > 0) {
+                    const randomWord = words[Math.floor(Math.random() * words.length)];
+                    input.value = randomWord;
+                    input.classList.add('filled');
+                    input.style.borderBottomColor = '#ffd700';
+                }
+            });
+        }
+        
+        function clearAll() {
+            document.querySelectorAll('.word-input').forEach(input => {
+                input.value = '';
+                input.classList.remove('filled');
+                input.style.borderBottomColor = '#ffd700';
+            });
+            document.getElementById('completedStory').style.display = 'none';
+        }
+        
+        function showError(message) {
+            document.getElementById('error').textContent = message;
+            document.getElementById('error').style.display = 'block';
+        }
+        
+        // Auto-load worlds on page load
+        window.addEventListener('load', () => {
+            const rootDomain = document.getElementById('rootDomain').value;
+            if (rootDomain) {
+                loadWorlds();
+            }
+        });
+    </script>
+</body>
+</html>
