@@ -511,12 +511,23 @@
                 const data = await response.json();
                 
                 if (data.Answer) {
-                    // Concatenate all TXT record values
-                    const allRecords = data.Answer
+                    console.log(`DNS Answer for ${domain}:`, data.Answer); // Debug log
+                    
+                    // Process each TXT record
+                    const records = data.Answer
                         .filter(record => record.type === 16)
-                        .map(record => record.data.replace(/^"|"$/g, ''))
-                        .join('');
-                    return allRecords;
+                        .map(record => {
+                            // Remove surrounding quotes
+                            let cleanData = record.data.replace(/^"|"$/g, '');
+                            console.log(`TXT record data: "${cleanData}"`); // Debug log
+                            return cleanData;
+                        });
+                    
+                    // If we have multiple records, join with newlines
+                    // If it's a single record that might contain multiple entries, we'll handle that in parsing
+                    const result = records.join('\n');
+                    console.log(`Final result for ${domain}: "${result}"`); // Debug log
+                    return result;
                 }
                 
                 return '';
@@ -542,19 +553,35 @@
                     throw new Error('No worlds found in DNS records');
                 }
                 
+                console.log('Raw worlds data:', worldsData); // Debug log
+                
                 // Parse world data - expecting format: "domain|name|tagline"
+                // The data should already be split by newlines from fetchDNSRecords
                 const worlds = worldsData.split('\n').filter(w => w.trim());
+                console.log('Parsed worlds:', worlds); // Debug log
+                
                 const dropdown = document.getElementById('worldDropdown');
                 dropdown.innerHTML = '<option value="">Choose a world...</option>';
                 
-                worlds.forEach(world => {
-                    const [domain, name, tagline] = world.split('|').map(s => s.trim());
+                worlds.forEach((world, index) => {
+                    console.log(`Processing world ${index + 1}: "${world}"`); // Debug log
+                    const parts = world.split('|').map(s => s.trim());
+                    console.log(`Split parts:`, parts); // Debug log
+                    
+                    const [domain, name, tagline] = parts;
+                    
+                    if (!domain || !name) {
+                        console.warn(`Skipping invalid world entry: "${world}"`);
+                        return;
+                    }
+                    
                     const option = document.createElement('option');
                     option.value = domain;
                     option.textContent = name + (tagline ? ` - ${tagline}` : '');
                     option.dataset.name = name || '';
                     option.dataset.tagline = tagline || '';
                     dropdown.appendChild(option);
+                    console.log(`Added option: ${option.textContent}`); // Debug log
                 });
                 
                 document.getElementById('worldSelect').style.display = 'block';
@@ -575,7 +602,9 @@
                 
                 // Update header with world info
                 const h1 = document.querySelector('h1');
-                h1.innerHTML = `${name} Mad Lib`;
+                h1.innerHTML = `<img src="https://ttl.ninja/ninja.svg" alt="⌛" style="width: 1em; height: 1em; vertical-align: middle;">
+                ${name} Mad Libs
+                <img src="https://ttl.ninja/ninja.svg" alt="⌛" style="width: 1em; height: 1em; vertical-align: middle;">`;
                 document.getElementById('tagline').textContent = tagline;
                 
                 loadWorld(currentWorld);
@@ -630,7 +659,8 @@
                             
                             storyStructure = structureParts.map(part => {
                                 const trimmedPart = part.trim();
-                                const match = trimmedPart.match(/(\w+)(?:\((\d+)\))?/);
+                                // Updated regex to include hyphens in the name
+                                const match = trimmedPart.match(/([\w-]+)(?:\((\d+)\))?/);
                                 console.log(`Parsing: "${trimmedPart}", match:`, match);
                                 if (match) {
                                     const result = {
@@ -660,7 +690,8 @@
                     // Parse story parts from structure definition
                     const structureParts = structureDefinition.split(',');
                     storyStructure = structureParts.map(part => {
-                        const match = part.trim().match(/(\w+)(?:\((\d+)\))?/);
+                        // Updated regex to include hyphens in the name
+                        const match = part.trim().match(/([\w-]+)(?:\((\d+)\))?/);
                         if (match) {
                             return {
                                 name: match[1],
@@ -675,24 +706,10 @@
                 
                 updateStatus('world', 'World data loaded', true);
                 
-                // Load word lists
-                const wordTypes = ['adjectives', 'nouns', 'verbs', 'places', 'expletives'];
-                for (const type of wordTypes) {
-                    updateStatus(type, 'Loading...');
-                    try {
-                        const data = await fetchDNSRecords(`${type}.${worldDomain}`);
-                        if (data) {
-                            wordLists[type] = data.split('|').filter(w => w.trim()).map(w => w.trim());
-                            updateStatus(type, `Loaded: ${wordLists[type].length} words`, true);
-                        } else {
-                            updateStatus(type, 'No data found', false);
-                        }
-                    } catch (error) {
-                        updateStatus(type, 'Failed to load', false);
-                    }
-                }
+                // First, load all story parts to discover what word types we need
+                const neededWordTypes = new Set();
                 
-                // Load story parts
+                // Load story parts first to find all word types
                 for (const part of storyStructure) {
                     updateStatus(part.name, 'Loading...');
                     try {
@@ -719,6 +736,17 @@
                                 return line;
                             });
                             
+                            // Extract word types from templates
+                            lines.forEach(line => {
+                                const matches = line.match(/{([\w-]+)}/g);
+                                if (matches) {
+                                    matches.forEach(match => {
+                                        const wordType = match.slice(1, -1); // Remove { and }
+                                        neededWordTypes.add(wordType);
+                                    });
+                                }
+                            });
+                            
                             console.log(`First line example:`, lines[0]);
                             
                             storyParts[part.name] = lines;
@@ -729,6 +757,24 @@
                         }
                     } catch (error) {
                         updateStatus(part.name, 'Failed to load', false);
+                    }
+                }
+                
+                console.log('Discovered word types needed:', Array.from(neededWordTypes));
+                
+                // Load word lists for discovered types
+                for (const type of neededWordTypes) {
+                    updateStatus(type, 'Loading...');
+                    try {
+                        const data = await fetchDNSRecords(`${type}.${worldDomain}`);
+                        if (data) {
+                            wordLists[type] = data.split('|').filter(w => w.trim()).map(w => w.trim());
+                            updateStatus(type, `Loaded: ${wordLists[type].length} words`, true);
+                        } else {
+                            updateStatus(type, 'No data found', false);
+                        }
+                    } catch (error) {
+                        updateStatus(type, 'Failed to load', false);
                     }
                 }
                 
@@ -848,14 +894,10 @@
         }
         
         function renderTemplate(template) {
-            return template.replace(/{(\w+)}/g, (match, wordType) => {
-                // Handle both singular and plural forms
-                let lookupType = wordType;
-                if (wordType === 'expletive') {
-                    lookupType = 'expletives';
-                } else if (!wordType.endsWith('s')) {
-                    lookupType = wordType + 's';
-                }
+            // Updated regex to include hyphens in placeholder names
+            return template.replace(/{([\w-]+)}/g, (match, wordType) => {
+                // Use the word type exactly as specified in the template
+                const lookupType = wordType;
                 
                 const words = wordLists[lookupType] || [];
                 if (words.length === 0) {
@@ -940,7 +982,7 @@
             
             // Generate the complete story
             const completedDiv = document.getElementById('completedStory');
-            completedDiv.innerHTML = '<h2>Your Wu-Tang Mad Lib Masterpiece:</h2>';
+            completedDiv.innerHTML = '<h2>Your Mad Lib Masterpiece:</h2>';
             
             const sections = document.querySelectorAll('.story-section');
             sections.forEach(section => {
